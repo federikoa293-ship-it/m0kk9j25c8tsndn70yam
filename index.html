@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MejiK</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#14151a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MejiK" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="tesseract/tesseract.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>🃏 MejiK</h1>
+    <span class="subtitle">Magic → Moxfield</span>
+  </header>
+
+  <main>
+    <!-- ===== Tab Scanner ===== -->
+    <section id="view-scan" class="view active">
+      <div id="cam-wrap" class="cam-wrap hidden">
+        <video id="cam" playsinline muted autoplay></video>
+        <div class="cam-guide"></div>
+        <div id="cam-flash" class="cam-flash"></div>
+      </div>
+
+      <div id="cam-off" class="cam-off">
+        <span>📷</span>
+        <p class="muted">Premi <b>Avvia scanner</b> per accendere la fotocamera</p>
+      </div>
+
+      <div class="scan-controls">
+        <button id="btn-shot" class="primary big">📷 Avvia scanner</button>
+        <button id="btn-stop" class="ghost hidden">⏹ Spegni fotocamera</button>
+        <label class="batch-toggle">
+          <input type="checkbox" id="auto-mode" /> Auto — scansiona di continuo
+        </label>
+        <label class="batch-toggle">
+          <input type="checkbox" id="it-mode" /> Includi carte in italiano (più lento)
+        </label>
+      </div>
+
+      <div id="scan-status" class="status hidden"></div>
+
+      <div id="scan-result" class="card-result hidden">
+        <div class="result-top">
+          <img id="result-thumb" class="result-thumb hidden" alt="" />
+          <div class="result-names">
+            <p class="result-label">Carta riconosciuta:</p>
+            <h2 id="result-name">—</h2>
+            <p id="result-printed" class="muted printed hidden"></p>
+          </div>
+        </div>
+
+        <div id="alts" class="alts hidden">
+          <span class="muted">Non è questa? Scegli:</span>
+          <div id="alts-chips" class="chips"></div>
+        </div>
+
+        <label class="field-label">Edizione</label>
+        <select id="edition-select" class="select"></select>
+
+        <div class="price-row">
+          <span class="muted">Prezzo Cardmarket</span>
+          <strong id="result-price">—</strong>
+        </div>
+
+        <div class="qty-row">
+          <label>Quantità</label>
+          <button class="qty-btn" data-act="dec">−</button>
+          <span id="result-qty">1</span>
+          <button class="qty-btn" data-act="inc">+</button>
+        </div>
+
+        <button id="btn-add" class="primary">➕ Aggiungi alla lista</button>
+        <button id="btn-discard" class="ghost">Salta</button>
+      </div>
+
+      <div class="manual">
+        <p class="muted">OCR sbagliato? Cerca a mano (anche in italiano):</p>
+        <div class="manual-row">
+          <input id="manual-input" type="text" placeholder="Nome carta (es. Lightning Bolt / Fulmine)" />
+          <button id="btn-manual" class="secondary">Cerca</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Tab Lista ===== -->
+    <section id="view-list" class="view">
+      <div class="list-header">
+        <span id="list-count" class="muted">0 carte</span>
+        <button id="btn-clear" class="ghost danger">Svuota</button>
+      </div>
+      <ul id="card-list" class="card-list"></ul>
+
+      <p class="muted export-title">Per un mazzo (lista testuale):</p>
+      <div class="export-bar">
+        <button id="btn-copy" class="primary">📋 Copia lista</button>
+        <button id="btn-share" class="secondary">📤 Condividi</button>
+      </div>
+      <p class="muted export-title">Per la collezione (file .csv):</p>
+      <div class="export-bar">
+        <button id="btn-csv" class="primary">📄 Esporta CSV (Collezione)</button>
+      </div>
+      <p class="muted export-title">Per comprarle:</p>
+      <div class="export-bar">
+        <button id="btn-cardmarket" class="secondary">🛒 Compra su Cardmarket (Wants)</button>
+      </div>
+      <details class="moxfield-help">
+        <summary>Come importare su Moxfield</summary>
+        <p><strong>In un mazzo:</strong></p>
+        <ol>
+          <li>Tocca <em>Copia lista</em>.</li>
+          <li>Su moxfield.com apri un deck → <em>More</em> → <em>Bulk Edit</em> / <em>Import</em>.</li>
+          <li>Incolla e conferma.</li>
+        </ol>
+        <p><strong>Nella collezione:</strong></p>
+        <ol>
+          <li>Tocca <em>Esporta CSV</em> e salva/condividi il file <code>.csv</code>.</li>
+          <li>Su moxfield.com vai in <em>Collection</em> → <em>Import</em> → carica il file <code>.csv</code>.</li>
+        </ol>
+        <p class="muted">Il CSV usa valori predefiniti: Near Mint, Inglese, non foil.</p>
+      </details>
+    </section>
+
+    <!-- ===== Tab Statistiche ===== -->
+    <section id="view-stats" class="view">
+      <div class="stat-cards">
+        <div class="stat-box"><span id="st-total" class="stat-num">0</span><span class="stat-lbl">carte totali</span></div>
+        <div class="stat-box"><span id="st-distinct" class="stat-num">0</span><span class="stat-lbl">carte diverse</span></div>
+        <div class="stat-box wide"><span id="st-value" class="stat-num">€0,00</span><span class="stat-lbl" id="st-value-lbl">valore stimato (Cardmarket)</span></div>
+      </div>
+      <h3 class="stat-h">Per colore</h3>
+      <div id="st-colors" class="bars"></div>
+      <h3 class="stat-h">Per rarità</h3>
+      <div id="st-rarity" class="bars"></div>
+      <h3 class="stat-h">Per set (top 8)</h3>
+      <div id="st-sets" class="bars"></div>
+    </section>
+
+    <!-- ===== Tab Vite (contatore partita) ===== -->
+    <section id="view-life" class="view"></section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-view="view-scan">📷 Scanner</button>
+    <button class="tab" data-view="view-list">📋 Lista <span id="tab-badge" class="badge hidden">0</span></button>
+    <button class="tab" data-view="view-stats">📊 Statistiche</button>
+    <button class="tab" data-view="view-life">🎮 Gioco</button>
+  </nav>
+
+  <script async src="opencv/opencv.js"></script>
+  <script src="js/phash.js"></script>
+  <script src="js/imagematch.js"></script>
+  <script src="js/scryfall.js"></script>
+  <script src="js/ocr.js"></script>
+  <script src="js/moxfield.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/life.js"></script>
+</body>
+</html>
