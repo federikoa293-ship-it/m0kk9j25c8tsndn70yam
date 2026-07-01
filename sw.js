@@ -1,6 +1,6 @@
 // Service worker MejiK (solo PWA web): mette in cache l'app per l'uso offline.
 // Cambia CACHE quando ripubblichi per forzare l'aggiornamento.
-const CACHE = 'mejik-v2';
+const CACHE = 'mejik-v3';
 
 // File piccoli del "guscio" app, messi in cache subito.
 const CORE = [

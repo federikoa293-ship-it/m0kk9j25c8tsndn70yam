@@ -252,13 +252,40 @@
       </div>`;
 
     ov.onclick = (e) => { if (e.target === ov || e.target.hasAttribute('data-close')) closeModal(); };
-    ov.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; p[k] = Math.max(0, (p[k] || 0) + (+b.dataset.d)); save(); renderModal(id, ov); renderGame(); });
+    // Aggiornamento IN LOCO del valore (niente ridisegno della finestra → lo scroll non salta).
+    const MAXK = { poison: 10, energy: 0, experience: 0 };
+    ov.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+      const k = b.dataset.k;
+      p[k] = Math.max(0, (p[k] || 0) + (+b.dataset.d));
+      save();
+      const row = b.closest('.lc-row2'), max = MAXK[k] || 0;
+      if (row) {
+        row.querySelector('.lc-row-v').textContent = p[k] + (max ? '/' + max : '');
+        row.classList.toggle('lc-warn', max ? p[k] >= max : false);
+      }
+      renderGame();
+    });
     ov.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => {
       const o = b.dataset.cmd, before = p.cmd[o] || 0, after = Math.max(0, before + (+b.dataset.d));
-      p.cmd[o] = after; p.life -= (after - before); save(); renderModal(id, ov); renderGame();
+      p.cmd[o] = after; p.life -= (after - before);
+      save();
+      const row = b.closest('.lc-row2');
+      if (row) {
+        row.querySelector('.lc-row-v').textContent = after + '/21';
+        row.classList.toggle('lc-warn', after >= 21);
+      }
+      renderGame();
     });
     const mb = ov.querySelector('[data-monarch]');
-    if (mb) mb.onclick = () => { const was = p.monarch; game.players.forEach(q => q.monarch = false); p.monarch = !was; save(); renderModal(id, ov); renderGame(); };
+    if (mb) mb.onclick = () => {
+      const was = p.monarch;
+      game.players.forEach(q => q.monarch = false);
+      p.monarch = !was;
+      save();
+      mb.classList.toggle('on', p.monarch);
+      mb.textContent = '👑 ' + (p.monarch ? 'È il monarca' : 'Rendi monarca');
+      renderGame();
+    };
     const cb = ov.querySelector('[data-concede]');
     if (cb) cb.onclick = () => { p.life = 0; save(); closeModal(); renderGame(); };
   }
