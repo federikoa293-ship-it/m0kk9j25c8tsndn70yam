@@ -10,7 +10,19 @@
   --radius: 14px;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* Niente riquadro/evidenziazione blu al tocco su pulsanti e icone; tocchi più reattivi. */
+button, .tab, .chip, .seg-btn, .qty-btn, .lc-b, .lc-chip, .lc-monarch, .lc-concede,
+.lc-name, .vcard, .varbtn, .del, select, label, a, video {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  outline: none;
+}
+:focus, :focus-visible { outline: none; }
+/* negli input/textarea la selezione del testo resta attiva (per scrivere/incollare) */
+input, textarea { -webkit-user-select: text; user-select: text; }
 
 html, body {
   margin: 0;
@@ -339,6 +351,10 @@ button:active { transform: scale(0.98); }
 
 /* Pulsante "vedi carta" nella lista + visualizzatore a tutta pagina */
 .card-list .vcard { background: transparent; color: var(--accent-2); padding: 6px; font-size: 18px; }
+.card-list .varbtn { background: transparent; color: var(--accent); padding: 6px; font-size: 16px; }
+.list-actions { margin-bottom: 10px; }
+.list-actions button { width: 100%; }
+.imp-text { width: 100%; background: var(--panel-2); border: 1px solid #353945; border-radius: 10px; color: var(--text); padding: 10px; font-size: 14px; resize: vertical; }
 #card-viewer { align-items: center; justify-content: center; padding: 16px; }
 .cv-box { margin: auto; text-align: center; max-width: 100%; }
 .cv-img { max-width: 88vw; max-height: 78vh; border-radius: 14px; box-shadow: 0 8px 34px rgba(0,0,0,.6); }

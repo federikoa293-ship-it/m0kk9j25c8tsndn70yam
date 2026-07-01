@@ -599,14 +599,17 @@
       const id = store.idOf(c);
       const sub = [c.set ? c.set + ' · #' + c.collector : '', eur(c.priceEur)].filter(Boolean).join(' · ');
       const li = document.createElement('li');
+      const sub2 = c.anyEdition ? (c.name + ' — edizione automatica') : sub;
       li.innerHTML = `
         <button class="vcard" title="Vedi carta">🔍</button>
-        <span class="name">${escapeHtml(c.name)}<small>${escapeHtml(sub)}</small></span>
+        <span class="name">${escapeHtml(c.name)}<small>${escapeHtml(sub2)}</small></span>
+        <button class="varbtn" title="Cambia edizione / variant">🏷</button>
         <span class="q">
           <button data-act="dec">−</button><strong>${c.qty}</strong><button data-act="inc">+</button>
         </span>
         <button class="del" title="Rimuovi">🗑</button>`;
       li.querySelector('.vcard').onclick = () => openCardViewer(c);
+      li.querySelector('.varbtn').onclick = () => openVariant(c);
       li.querySelector('[data-act="dec"]').onclick = () => { cards = store.setQty(cards, id, c.qty - 1); renderList(); updateBadge(); };
       li.querySelector('[data-act="inc"]').onclick = () => { cards = store.setQty(cards, id, c.qty + 1); renderList(); updateBadge(); };
       li.querySelector('.del').onclick = () => { cards = store.removeCard(cards, id); renderList(); updateBadge(); };
@@ -632,6 +635,75 @@
     const img = ov.querySelector('.cv-img'), capEl = ov.querySelector('.cv-cap');
     if (url) { img.src = url; capEl.textContent = cap; }
     else capEl.textContent = cap + ' — immagine non disponibile (serve internet)';
+  }
+
+  // Cambia edizione/variant di una carta (con "Default" = automatica).
+  async function openVariant(c) {
+    let ov = document.getElementById('var-modal');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'var-modal'; ov.className = 'lc-overlay'; document.body.appendChild(ov); }
+    const oldId = store.idOf(c);
+    ov.innerHTML = `<div class="lc-sheet"><div class="lc-sheet-h"><b>${escapeHtml(c.name)}</b><button class="lc-close" data-close>✕</button></div>
+      <div class="lc-sec-t">Variant / Edizione</div>
+      <select id="var-select" class="select"><option>Carico edizioni…</option></select>
+      <button id="var-save" class="primary" style="margin-top:14px">Salva</button></div>`;
+    ov.classList.add('show');
+    ov.onclick = (e) => { if (e.target === ov || e.target.hasAttribute('data-close')) ov.classList.remove('show'); };
+    const eds = await scryfall.printingsByName(c.name);
+    const sel = document.getElementById('var-select');
+    if (!sel) return;
+    sel.innerHTML = `<option value="default"${c.anyEdition ? ' selected' : ''}>Default (edizione automatica)</option>` +
+      eds.map((e, i) => `<option value="${i}"${(!c.anyEdition && e.set === c.set && e.collector === c.collector) ? ' selected' : ''}>${e.set} · ${e.setName} · #${e.collector} — ${eur(e.priceEur)}</option>`).join('');
+    document.getElementById('var-save').onclick = () => {
+      const card = cards.find(x => store.idOf(x) === oldId);
+      if (card) {
+        const v = sel.value;
+        if (v === 'default') card.anyEdition = true;
+        else {
+          const e = eds[+v];
+          if (e) { card.anyEdition = false; card.set = e.set; card.setName = e.setName; card.collector = e.collector; card.priceEur = e.priceEur; card.image = e.image; card.rarity = e.rarity; card.colors = e.colors; card.colorIdentity = e.colorIdentity; }
+        }
+        store.save(cards);
+      }
+      ov.classList.remove('show'); renderList(); updateBadge();
+    };
+  }
+
+  // Importa una decklist (stile Moxfield) e aggiunge le carte alla lista.
+  $('btn-import').addEventListener('click', openImport);
+  function openImport() {
+    let ov = document.getElementById('imp-modal');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'imp-modal'; ov.className = 'lc-overlay'; document.body.appendChild(ov); }
+    ov.innerHTML = `<div class="lc-sheet"><div class="lc-sheet-h"><b>📥 Importa da Moxfield</b><button class="lc-close" data-close>✕</button></div>
+      <p class="muted">Incolla la lista, una carta per riga (es. <code>1 Lightning Bolt</code> oppure <code>2 Sol Ring (MSC) 213</code>).</p>
+      <textarea id="imp-text" class="imp-text" rows="8" placeholder="1 Lightning Bolt&#10;2 Counterspell (MH2) 267"></textarea>
+      <button id="imp-go" class="primary" style="margin-top:10px">Importa</button>
+      <div id="imp-status" class="muted" style="margin-top:8px"></div></div>`;
+    ov.classList.add('show');
+    ov.onclick = (e) => { if (e.target === ov || e.target.hasAttribute('data-close')) ov.classList.remove('show'); };
+    document.getElementById('imp-go').onclick = () => runImport(document.getElementById('imp-text').value, document.getElementById('imp-status'), document.getElementById('imp-go'));
+  }
+
+  async function runImport(text, statusEl, btn) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) { statusEl.textContent = 'Incolla prima una lista.'; return; }
+    btn.disabled = true;
+    let added = 0, failed = 0, i = 0;
+    for (const line of lines) {
+      i++;
+      const m = line.match(/^(\d+)\s*[xX]?\s+(.+?)\s*(?:\(([^)]+)\)\s*([^\s]+)?)?\s*$/);
+      if (!m) { failed++; continue; }
+      const qty = parseInt(m[1], 10) || 1, name = m[2].trim(), set = m[3], num = m[4];
+      statusEl.textContent = `Importo ${i}/${lines.length}… (${added} ok)`;
+      let card = null;
+      if (set && num) card = await scryfall.cardBySetNumber(set, num);
+      if (!card) card = await scryfall.cardByName(name);
+      if (card) { cards = store.addCard(cards, card, qty); added++; } else failed++;
+      await new Promise(r => setTimeout(r, 90));
+    }
+    store.save(cards);
+    statusEl.textContent = `✅ Aggiunte ${added} carte${failed ? `, ${failed} non trovate` : ''}.`;
+    btn.disabled = false;
+    renderList(); updateBadge();
   }
 
   $('btn-clear').addEventListener('click', () => {
@@ -690,7 +762,7 @@
       if (Plugins.Clipboard) await Plugins.Clipboard.write({ string: text });
       else await navigator.clipboard.writeText(text);
     } catch { /* ignora */ }
-    alert('Lista copiata! ✅\n\nSu Cardmarket:\n1) crea una nuova Wants List (Magic)\n2) scegli "Aggiungi una decklist"\n3) incolla e conferma.');
+    alert('Lista copiata! ✅\n\nSu Cardmarket:\n1) crea/apri una Wants List (Magic)\n2) nelle impostazioni della lista imposta "Condizione minima" = Near Mint (NM)\n3) "Aggiungi una decklist" → incolla → conferma.\n\nLe carte con edizione scelta includono l\'espansione; quelle su "Default" restano generiche.');
     const url = 'https://www.cardmarket.com/it/Magic/Wants';
     try {
       if (Plugins.Browser) await Plugins.Browser.open({ url });
