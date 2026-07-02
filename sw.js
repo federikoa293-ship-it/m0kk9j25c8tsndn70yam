@@ -1,13 +1,13 @@
 // Service worker MejiK (solo PWA web): mette in cache l'app per l'uso offline.
 // Cambia CACHE quando ripubblichi per forzare l'aggiornamento.
-const CACHE = 'mejik-v3';
+const CACHE = 'mejik-v4';
 
 // File piccoli del "guscio" app, messi in cache subito.
 const CORE = [
   './', 'index.html', 'styles.css', 'manifest.json',
   'tesseract/tesseract.min.js',
   'js/phash.js', 'js/imagematch.js', 'js/scryfall.js', 'js/ocr.js',
-  'js/moxfield.js', 'js/store.js', 'js/app.js', 'js/life.js',
+  'js/moxfield.js', 'js/store.js', 'js/app.js', 'js/cards.js', 'js/life.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'
 ];
 
