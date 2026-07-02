@@ -266,6 +266,22 @@ button:active { transform: scale(0.98); }
 .lc-toolbar button { flex: 1; padding: 9px 4px; font-size: 13px; }
 .lc-winner { background: var(--accent); color: #1a1206; text-align: center; padding: 6px 10px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .lc-winner .lc-savebtn { width: auto; padding: 6px 12px; font-size: 13px; }
+.lc-times { text-align: center; padding: 4px 8px; color: var(--muted); font-size: 12px; }
+.lc-turnbar { text-align: center; padding: 6px; color: var(--muted); font-size: 14px; }
+.lc-turnbar b { font-size: 15px; }
+#lc-turntime { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Giocatore di turno: SOLO lo sfondo prende il colore del giocatore; i testi restano bianchi. */
+.lc-pl.lc-active { background: var(--c); }
+.lc-active .lc-name, .lc-active .lc-cmd, .lc-active .lc-life { color: #fff; }
+.lc-active .lc-b, .lc-active .lc-chip { color: #fff; background: rgba(0,0,0,.22); }
+.lc-active .lc-delta { background: rgba(0,0,0,.4); }
+
+/* Anteprima vita persa/guadagnata (−N / +N che sfuma) */
+.lc-delta { position: absolute; top: 24%; right: 8%; font-weight: 800; padding: 0 5px; border-radius: 8px; background: rgba(0,0,0,.4);
+  font-size: 14px; font-size: clamp(13px, 7cqmin, 30px); }
+.lc-delta.neg { color: #ff6b5e; }
+.lc-delta.pos { color: #57e08e; }
 
 /* Setup: righe giocatore + comandante */
 .lc-lbl { text-align: left; }
@@ -367,3 +383,99 @@ button:active { transform: scale(0.98); }
 .lc-roll { text-align: center; font-size: 48px; font-weight: 800; padding: 24px 0; }
 .lc-roll-btns { display: flex; gap: 8px; }
 .lc-roll-btns button { flex: 1; }
+
+/* ============ Scheda "Carte": sotto-tab, Collezione, Mazzi ============ */
+.subtabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.subtab { flex: 1 1 0; min-width: 0; background: var(--panel); color: var(--muted); border: 1px solid #2c2f3a;
+  border-radius: 12px; padding: 10px 6px; font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subtab.active { background: var(--panel-2); color: var(--accent); border-color: var(--accent); }
+.subview { display: none; }
+.subview.active { display: block; }
+
+/* i pulsanti-azione delle sotto-viste stanno in colonna, con spazio tra loro */
+.list-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.list-actions button, .list-actions .btn-file { width: 100%; margin: 0; }
+
+.search-in { width: 100%; background: var(--panel-2); border: 1px solid #353945; border-radius: 12px;
+  color: var(--text); padding: 12px 14px; font-size: 15px; margin-bottom: 10px; }
+/* "Importa CSV" è un <label>: gli do l'aspetto di un pulsante (le regole button{} non lo toccano) */
+.btn-file { display: block; text-align: center; cursor: pointer; padding: 14px 18px;
+  border-radius: var(--radius); font-weight: 600; font-size: 16px; }
+
+/* statistiche della collezione (blocco collassabile) */
+.stats-block { margin-bottom: 12px; border: 1px solid #2c2f3a; border-radius: var(--radius); background: var(--panel); padding: 0 12px; }
+.stats-block > summary { cursor: pointer; padding: 13px 2px; font-weight: 600; color: var(--text); list-style: none; }
+.stats-block > summary::-webkit-details-marker { display: none; }
+.stats-block > summary::after { content: '\25BE'; float: right; color: var(--muted); }
+.stats-block[open] > summary::after { content: '\25B4'; }
+.stats-block[open] { padding-bottom: 14px; }
+.stats-block .stat-h:first-of-type { margin-top: 12px; }
+
+/* segno di possesso (tick) */
+.tick { font-weight: 800; width: 20px; text-align: center; flex: 0 0 auto; }
+.tick.yes { color: #57e08e; }
+.tick.no { color: #4a4f5c; }
+
+/* visualizzatore immagine dedicato (centrato, sopra le altre finestre) */
+#cards-viewer { align-items: center; justify-content: center; padding: 16px; z-index: 60; }
+
+/* --- Mazzi: elenco + editor --- */
+.deck-list li { cursor: pointer; }
+.dk-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.dk-top #dk-back { flex: 0 0 auto; width: auto; padding: 8px 12px; }
+.dk-top .dk-title { flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-top .dk-count { flex: 0 0 auto; color: var(--muted); font-size: 14px; }
+
+.dk-cmd { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid #2c2f3a;
+  border-radius: 12px; padding: 10px; margin-bottom: 12px; min-height: 60px; }
+.dk-cmd-img { width: 46px; height: 46px; object-fit: cover; object-position: center 16%; border-radius: 8px; flex: 0 0 auto; }
+.dk-cmd-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.dk-cmd-info b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-cmd #dk-cmd-clear { flex: 0 0 auto; width: auto; padding: 8px 12px; }
+
+.dk-add { margin-bottom: 6px; }
+.dk-add .manual-row { margin-top: 0; }
+.dk-add .manual-row input { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid #353945;
+  border-radius: 12px; color: var(--text); padding: 12px 14px; font-size: 15px; }
+.dk-add .manual-row .secondary { flex: 0 0 auto; white-space: nowrap; }
+.dk-add-btns { display: flex; gap: 8px; margin-top: 8px; }
+.dk-add-btns .ghost { flex: 1 1 0; min-width: 0; padding: 12px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dk-sugg { margin-top: 8px; }
+#dk-sugg:empty { margin-top: 0; }
+#dk-sugg .chip { cursor: pointer; }
+
+.tchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.tchip { background: var(--panel-2); color: var(--text); border: 1px solid #353945; padding: 7px 12px;
+  border-radius: 999px; font-size: 13px; font-weight: 600; }
+.tchip.on { background: var(--accent); color: #1a1206; border-color: var(--accent); }
+
+.dk-group { margin-bottom: 16px; }
+.dk-gh { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.dk-row { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid #2c2f3a;
+  border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; }
+.dk-row .name { flex: 1; min-width: 0; overflow: hidden; }
+.dk-row .name small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-row .q { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.dk-row .q button { background: var(--panel-2); color: var(--text); padding: 6px 10px; border-radius: 9px; font-size: 15px; }
+.dk-row .crown { background: transparent; padding: 6px; font-size: 15px; filter: grayscale(1) opacity(.55); }
+.dk-row .crown.on { filter: none; }
+.dk-row .del { background: transparent; color: var(--danger); padding: 6px; font-size: 15px; }
+
+.dk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.dk-tile { position: relative; border-radius: 8px; overflow: hidden; background: var(--panel-2); aspect-ratio: 63 / 88; cursor: pointer; }
+.dk-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dk-noimg { display: flex; align-items: center; justify-content: center; height: 100%; padding: 6px; font-size: 12px; text-align: center; color: var(--muted); }
+.dk-tile .tick { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,.6); border-radius: 50%; width: 22px; height: 22px; line-height: 22px; }
+.dk-tile .dk-qty { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,.72); color: #fff; padding: 1px 6px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+
+.dk-pick { max-height: 60vh; overflow-y: auto; }
+.dk-pick .lc-row2 .lc-row-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-pick .lc-b { width: 44px; flex: 0 0 auto; padding: 8px 0; }
+.dk-pick .cp-view { background: transparent; color: var(--accent-2); padding: 6px; font-size: 17px; flex: 0 0 auto; }
+
+/* schermi molto stretti */
+@media (max-width: 360px) {
+  .subtab { font-size: 12px; padding: 9px 3px; }
+  .dk-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+}

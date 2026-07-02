@@ -27,6 +27,7 @@ function normCard(c) {
     setName: c.set_name || '',
     collector: c.collector_number || '',
     rarity: c.rarity || '',
+    type: c.type_line || (c.card_faces?.[0]?.type_line) || '',
     colors: c.colors || (c.card_faces?.[0]?.colors) || [],
     colorIdentity: c.color_identity || [],
     priceEur: c.prices && c.prices.eur ? parseFloat(c.prices.eur) : null, // Cardmarket €

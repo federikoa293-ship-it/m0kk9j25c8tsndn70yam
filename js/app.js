@@ -20,6 +20,19 @@
     show(s);
   }
 
+  // ---- Schermo sempre acceso nella scheda "Gioco" ----
+  let wakeLock = null, wantWake = false;
+  async function requestWakeLock() {
+    wantWake = true;
+    try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { /* ignora */ }
+  }
+  function releaseWakeLock() {
+    wantWake = false;
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) { /* ignora */ }
+  }
+  // il lock si perde quando l'app va in background: lo ri-acquisiamo al ritorno se serve
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wantWake) requestWakeLock(); });
+
   // ---- Navigazione tab ----
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -29,9 +42,10 @@
       const view = tab.dataset.view;
       $(view).classList.add('active');
       if (view === 'view-list') renderList();
-      if (view === 'view-stats') renderStats();
       // La fotocamera non parte da sola: si accende col pulsante. Uscendo si spegne.
       if (view !== 'view-scan') { $('auto-mode').checked = false; stopCamera(); setCamUI(false); resumePreview(); }
+      // Schermo sempre acceso solo nel Gioco.
+      if (view === 'view-life') requestWakeLock(); else releaseWakeLock();
     });
   });
 
@@ -56,6 +70,7 @@
   // Avvia l'anteprima della fotocamera (camera posteriore).
   async function startCamera() {
     if (stream) return;
+    ensureScanAssets();    // carica OpenCV + DB impronte al primo utilizzo dello scanner
     resetScanState();      // parte sempre da uno stato pulito
     try {
       // Assicura il permesso fotocamera a livello di sistema.
@@ -171,6 +186,23 @@
     if (window.cv && window.cv.Mat && typeof window.cv.matFromArray === 'function') { cvReady = true; return; }
     if (window.cv && typeof window.cv.then === 'function') { window.cv.then(m => { window.cv = m; cvReady = true; }); return; }
     setTimeout(initOpenCV, 250);
+  }
+
+  // Le risorse pesanti dello scanner (OpenCV ~10 MB + DB impronte ~1,5 MB) si caricano SOLO
+  // al primo avvio dello scanner: aprire l'app per Gioco/Carte resta così rapido e leggero.
+  // Idempotente. Se OpenCV non è ancora pronto alla prima scansione, c'è il ripiego automatico.
+  let scanAssetsStarted = false;
+  function ensureScanAssets() {
+    if (scanAssetsStarted) return;
+    scanAssetsStarted = true;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = new URL('opencv/opencv.js', location.href).href;
+    document.head.appendChild(s);
+    initOpenCV(); // avvia il rilevamento di prontezza (poll finché cv è caricato)
+    if (SM.imagematch) SM.imagematch.load().then(ok => {
+      if (ok) console.log('Riconoscimento immagine pronto: ' + SM.imagematch.count() + ' carte.');
+    });
   }
 
   function orderCorners(p) {
@@ -713,6 +745,20 @@
     }
   });
 
+  // Copia una o più carte nella Collezione (inventario cumulativo). La lista resta invariata.
+  function addToCollection(list) {
+    if (!list || !list.length) return;
+    const coll = store.loadCollection();
+    for (const c of list) store.mergeCard(coll, c, c.qty || 1);
+    store.saveCollection(coll);
+    if (SM.cards && SM.cards.onCollectionChanged) SM.cards.onCollectionChanged();
+  }
+  $('btn-to-coll').addEventListener('click', (e) => {
+    if (!cards.length) { flash(e.currentTarget, 'Lista vuota'); return; }
+    addToCollection(cards);
+    flash(e.currentTarget, `✅ ${store.totalCount(cards)} carte in collezione`);
+  });
+
   // ================= EXPORT =================
   $('btn-copy').addEventListener('click', async () => {
     if (!cards.length) return;
@@ -770,35 +816,7 @@
     } catch { window.open(url, '_blank'); }
   });
 
-  // ================= STATISTICHE =================
-  function renderStats() {
-    const s = store.stats(cards);
-    $('st-total').textContent = s.total;
-    $('st-distinct').textContent = s.distinct;
-    $('st-value').textContent = eur(s.value);
-    $('st-value-lbl').textContent = s.unpriced
-      ? `valore stimato (Cardmarket) · ${s.unpriced} senza prezzo`
-      : 'valore stimato (Cardmarket)';
-    renderBars('st-colors', s.byColor);
-    renderBars('st-rarity', s.byRarity);
-    renderBars('st-sets', s.bySet.slice(0, 8));
-  }
-
-  function renderBars(id, entries) {
-    const box = $(id);
-    box.innerHTML = '';
-    if (!entries.length) { box.innerHTML = '<p class="muted">—</p>'; return; }
-    const max = Math.max(...entries.map(e => e[1]));
-    for (const [label, n] of entries) {
-      const row = document.createElement('div');
-      row.className = 'bar-row';
-      row.innerHTML = `
-        <span class="bar-lbl">${escapeHtml(label)}</span>
-        <span class="bar-track"><span class="bar-fill" style="width:${Math.round(n / max * 100)}%"></span></span>
-        <span class="bar-val">${n}</span>`;
-      box.appendChild(row);
-    }
-  }
+  // (Le statistiche sono ora dentro la scheda Carte → Collezione, gestite da cards.js.)
 
   // ---- util ----
   function flash(btn, msg) {
@@ -827,12 +845,8 @@
     setStatus(on ? '🇮🇹 Italiano attivo (lettura un po\' più lenta).' : '');
   });
 
-  initOpenCV(); // avvia (in background) il raddrizzamento prospettico OpenCV
-
-  // Carica il database delle impronte (riconoscimento per immagine), se presente.
-  if (SM.imagematch) SM.imagematch.load().then(ok => {
-    if (ok) console.log('Riconoscimento immagine pronto: ' + SM.imagematch.count() + ' carte.');
-  });
+  // OpenCV e il DB impronte NON si caricano all'avvio: partono al primo uso dello
+  // scanner (vedi ensureScanAssets in startCamera), così l'avvio dell'app resta leggero.
 
   updateBadge();
   setCamUI(false); // fotocamera spenta all'avvio: si accende col pulsante

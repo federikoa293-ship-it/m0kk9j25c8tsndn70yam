@@ -7,6 +7,13 @@
 
   let game = load();
   let setupN = 4, setupLife = 40, setupPlayers = [];
+  let turn = null;            // stato turni (in memoria, NON salvato): { active, dir, startTs, times:{}, count }
+  const deltaState = {};      // anteprima vita: { id: variazione netta recente }
+  const deltaTimers = {};
+  let turnTick = null;        // intervallo che aggiorna il cronometro a schermo
+
+  const fmtTime = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const turnElapsed = () => turn ? (Date.now() - turn.startTs) : 0;
 
   function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
   function save() { localStorage.setItem(KEY, JSON.stringify(game)); }
@@ -99,6 +106,8 @@
       });
     }
     game = { n, startLife: life, players };
+    turn = null;
+    Object.keys(deltaState).forEach(k => delete deltaState[k]);
     save();
     renderGame();
   }
@@ -106,11 +115,16 @@
   // ---------- GIOCO ----------
   function renderGame() {
     const alive = game.players.filter(p => !isDead(p));
+    const won = game.players.length > 1 && alive.length === 1;
     let banner = '';
-    if (game.players.length > 1 && alive.length === 1) {
+    if (won) {
       const w = alive[0];
       banner = `<div class="lc-winner">🏆 <b>${esc(w.name)}</b>${w.commander ? ' · ' + esc(w.commander) : ''}
         <button id="lc-save" class="primary lc-savebtn">💾 Salva</button></div>`;
+      if (turn) {
+        const tm = { ...turn.times }; tm[turn.active] = (tm[turn.active] || 0) + turnElapsed();
+        banner += `<div class="lc-times">⏱ ${game.players.map(p => `${esc(p.name)} ${fmtTime(tm[p.id] || 0)}`).join(' · ')}</div>`;
+      }
     }
     // Layout "a tavolo" col telefono in verticale:
     // 2 → sopra/sotto · pari>2 → sinistra/destra · dispari>2 → sinistra/destra + uno sotto.
@@ -132,22 +146,36 @@
         ${bottom ? `<div class="lc-area lc-botarea">${panelHtml(bottom, '')}</div>` : ''}`;
     }
 
+    const turnActive = turn && !won;
     root().innerHTML = `
       <div class="lc-game">
         <div class="lc-toolbar">
           <button id="lc-dice" class="secondary">🎲 Dadi</button>
-          <button id="lc-first" class="secondary">🎯 Primo</button>
+          ${turnActive ? '<button id="lc-pass" class="primary">⏭️ Passa turno</button>'
+                       : '<button id="lc-first" class="secondary">🎯 Primo</button>'}
           <button id="lc-reset" class="ghost danger">⟲ Nuova</button>
         </div>
+        ${turnActive ? `<div class="lc-turnbar">Turno ${turn.count} · <b style="color:${game.players[turn.active].color}">${esc(game.players[turn.active].name)}</b> · <span id="lc-turntime">${fmtTime(turnElapsed())}</span></div>` : ''}
         ${banner}
         <div class="lc-table">${table}</div>
       </div>`;
 
     game.players.forEach(p => bindPanel(p.id));
     document.getElementById('lc-dice').onclick = rollDialog;
-    document.getElementById('lc-first').onclick = firstPlayer;
-    document.getElementById('lc-reset').onclick = () => { if (confirm('Iniziare una nuova partita senza salvare? La partita attuale sarà persa.')) { game = null; localStorage.removeItem(KEY); renderSetup(); } };
+    const fb = document.getElementById('lc-first'); if (fb) fb.onclick = turnDialog;
+    const pb = document.getElementById('lc-pass'); if (pb) pb.onclick = passTurn;
+    document.getElementById('lc-reset').onclick = () => { if (confirm('Iniziare una nuova partita senza salvare? La partita attuale sarà persa.')) { turn = null; game = null; localStorage.removeItem(KEY); renderSetup(); } };
     const sb = document.getElementById('lc-save'); if (sb) sb.onclick = saveGame;
+
+    // cronometro live del turno
+    if (turnTick) { clearInterval(turnTick); turnTick = null; }
+    if (turnActive) {
+      turnTick = setInterval(() => {
+        const el = document.getElementById('lc-turntime');
+        if (el) el.textContent = fmtTime(turnElapsed());
+        else { clearInterval(turnTick); turnTick = null; }
+      }, 1000);
+    }
   }
 
   function cellHtml(p, side) { return `<div class="lc-cell ${side}">${panelHtml(p, '')}</div>`; }
@@ -155,8 +183,11 @@
   function panelHtml(p, mode) {
     const dead = isDead(p), cmd = maxCmd(p), big5 = game.n <= 4;
     const r = mode === 'r180' ? ' r180' : '';
+    const active = turn && turn.active === p.id ? ' lc-active' : '';
+    const dv = deltaState[p.id];
+    const deltaHtml = dv ? `<span class="lc-delta ${dv < 0 ? 'neg' : 'pos'}">${dv > 0 ? '+' : ''}${dv}</span>` : '';
     return `
-      <div class="lc-pl${dead ? ' dead' : ''}${r}" style="--c:${p.color}" data-id="${p.id}">
+      <div class="lc-pl${dead ? ' dead' : ''}${active}${r}" style="--c:${p.color}" data-id="${p.id}">
         <span class="lc-name" data-act="name">${p.monarch ? '👑 ' : ''}${esc(p.name)}</span>
         ${p.commander ? `<span class="lc-cmd">${esc(p.commander)}</span>` : ''}
         <div class="lc-lifewrap">
@@ -166,6 +197,7 @@
           <button class="lc-b" data-act="l+1">+</button>
           ${big5 ? '<button class="lc-b big5" data-act="l+5">+5</button>' : ''}
         </div>
+        ${deltaHtml}
         <div class="lc-chips">
           ${p.poison ? `<button class="lc-chip hot" data-act="more">☠ ${p.poison}</button>` : ''}
           ${cmd ? `<button class="lc-chip hot" data-act="more">⚔ ${cmd}</button>` : ''}
@@ -193,7 +225,14 @@
     });
   }
 
-  function chgLife(id, d) { game.players[id].life += d; save(); renderGame(); }
+  function chgLife(id, d) {
+    game.players[id].life += d; save();
+    // anteprima: accumula la variazione recente e la fa sparire dopo ~3s di inattività
+    deltaState[id] = (deltaState[id] || 0) + d;
+    clearTimeout(deltaTimers[id]);
+    deltaTimers[id] = setTimeout(() => { delete deltaState[id]; renderGame(); }, 3000);
+    renderGame();
+  }
 
   function saveGame() {
     const alive = game.players.filter(p => !isDead(p));
@@ -307,12 +346,47 @@
     };
     draw('Tocca un pulsante'); ov.classList.add('show');
   }
-  function firstPlayer() {
+  // "Primo": estrae il primo giocatore, poi scegli tu la direzione → parte il conteggio turni.
+  function turnDialog() {
     const p = game.players[Math.floor(Math.random() * game.players.length)];
     const ov = ensureOverlay();
-    ov.innerHTML = `<div class="lc-sheet"><div class="lc-sheet-h"><b>🎯 Primo di mano</b><button class="lc-close" data-close>✕</button></div><div class="lc-roll" style="color:${p.color}">${esc(p.name)}</div></div>`;
+    ov.innerHTML = `<div class="lc-sheet"><div class="lc-sheet-h"><b>🎯 Primo di mano</b><button class="lc-close" data-close>✕</button></div>
+      <div class="lc-roll" style="color:${p.color}">${esc(p.name)}</div>
+      <div class="lc-sec-t">Direzione dei turni</div>
+      <div class="lc-roll-btns"><button class="secondary" data-dir="1">↻ Orario</button><button class="secondary" data-dir="-1">↺ Antiorario</button></div></div>`;
     ov.onclick = (e) => { if (e.target === ov || e.target.hasAttribute('data-close')) closeModal(); };
+    ov.querySelectorAll('[data-dir]').forEach(b => b.onclick = () => {
+      turn = { active: p.id, dir: +b.dataset.dir, startTs: Date.now(), times: {}, count: 1 };
+      closeModal(); renderGame();
+    });
     ov.classList.add('show');
+  }
+
+  // Ordine dei posti in senso ORARIO attorno al tavolo (segue la disposizione a schermo).
+  function seatOrder() {
+    const n = game.n;
+    if (n === 2) return [0, 1];
+    const even = n % 2 === 0;
+    const side = even ? n / 2 : (n - 1) / 2;
+    const left = Array.from({ length: side }, (_, i) => i);        // colonna sinistra (dall'alto)
+    const right = Array.from({ length: side }, (_, i) => side + i); // colonna destra (dall'alto)
+    const tailLeft = left.slice(1).reverse();                       // sinistra dal basso verso l'alto (escl. il primo)
+    // orario: alto-sx → alto-dx → giù a destra → (eventuale sotto) → su a sinistra
+    return even ? [left[0], ...right, ...tailLeft]
+                : [left[0], ...right, n - 1, ...tailLeft];
+  }
+
+  // Passa al prossimo giocatore vivo nella direzione scelta, accumulando il tempo del turno.
+  function passTurn() {
+    if (!turn) return;
+    turn.times[turn.active] = (turn.times[turn.active] || 0) + turnElapsed();
+    const order = seatOrder(), m = order.length, pos = order.indexOf(turn.active);
+    for (let k = 1; k <= m; k++) {
+      const cand = order[((pos + turn.dir * k) % m + m) % m];
+      if (!isDead(game.players[cand])) { turn.active = cand; break; }
+    }
+    turn.startTs = Date.now(); turn.count++;
+    renderGame();
   }
 
   function render() { if (game && game.players) renderGame(); else renderSetup(); }

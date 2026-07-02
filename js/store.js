@@ -90,4 +90,25 @@ function stats(cards) {
   };
 }
 
-SM.store = { load, save, idOf, addCard, setQty, removeCard, totalCount, stats };
+// ---- Collezione e Mazzi (array generici, salvataggio esplicito dal chiamante) ----
+const COLL_KEY = 'scanmtg.collection.v1', DECKS_KEY = 'scanmtg.decks.v1';
+function loadArr(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
+function saveArr(key, a) { localStorage.setItem(key, JSON.stringify(a)); }
+
+// Unisce/incrementa una carta in un array qualsiasi (NON salva: pensa il chiamante).
+function mergeCard(arr, card, qty) {
+  const id = idOf(card);
+  const ex = arr.find(c => idOf(c) === id);
+  if (ex) ex.qty += qty; else arr.push({ ...card, qty });
+  return arr;
+}
+
+const loadCollection = () => loadArr(COLL_KEY);
+const saveCollection = a => saveArr(COLL_KEY, a);
+const loadDecks = () => loadArr(DECKS_KEY);
+const saveDecks = a => saveArr(DECKS_KEY, a);
+
+SM.store = {
+  load, save, idOf, addCard, setQty, removeCard, totalCount, stats,
+  mergeCard, loadCollection, saveCollection, loadDecks, saveDecks
+};

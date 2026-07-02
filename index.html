@@ -91,14 +91,23 @@
       </div>
     </section>
 
-    <!-- ===== Tab Lista ===== -->
+    <!-- ===== Tab Carte (Lista / Collezione / Mazzi) ===== -->
     <section id="view-list" class="view">
+      <div class="subtabs">
+        <button class="subtab active" data-sub="sub-lista">📋 Lista</button>
+        <button class="subtab" data-sub="sub-coll">📚 Collezione</button>
+        <button class="subtab" data-sub="sub-decks">🃏 Mazzi</button>
+      </div>
+
+      <!-- --- Sotto-vista: Lista (quella storica) --- -->
+      <div id="sub-lista" class="subview active">
       <div class="list-header">
         <span id="list-count" class="muted">0 carte</span>
         <button id="btn-clear" class="ghost danger">Svuota</button>
       </div>
       <div class="list-actions">
         <button id="btn-import" class="secondary">📥 Importa da Moxfield</button>
+        <button id="btn-to-coll" class="secondary">📚 Aggiungi lista alla collezione</button>
       </div>
       <ul id="card-list" class="card-list"></ul>
 
@@ -130,21 +139,13 @@
         </ol>
         <p class="muted">Il CSV usa valori predefiniti: Near Mint, Inglese, non foil.</p>
       </details>
-    </section>
+      </div><!-- /sub-lista -->
 
-    <!-- ===== Tab Statistiche ===== -->
-    <section id="view-stats" class="view">
-      <div class="stat-cards">
-        <div class="stat-box"><span id="st-total" class="stat-num">0</span><span class="stat-lbl">carte totali</span></div>
-        <div class="stat-box"><span id="st-distinct" class="stat-num">0</span><span class="stat-lbl">carte diverse</span></div>
-        <div class="stat-box wide"><span id="st-value" class="stat-num">€0,00</span><span class="stat-lbl" id="st-value-lbl">valore stimato (Cardmarket)</span></div>
-      </div>
-      <h3 class="stat-h">Per colore</h3>
-      <div id="st-colors" class="bars"></div>
-      <h3 class="stat-h">Per rarità</h3>
-      <div id="st-rarity" class="bars"></div>
-      <h3 class="stat-h">Per set (top 8)</h3>
-      <div id="st-sets" class="bars"></div>
+      <!-- --- Sotto-vista: Collezione (renderizzata da cards.js) --- -->
+      <div id="sub-coll" class="subview"></div>
+
+      <!-- --- Sotto-vista: Mazzi (renderizzata da cards.js) --- -->
+      <div id="sub-decks" class="subview"></div>
     </section>
 
     <!-- ===== Tab Vite (contatore partita) ===== -->
@@ -153,12 +154,11 @@
 
   <nav class="tabbar">
     <button class="tab active" data-view="view-scan">Scanner</button>
-    <button class="tab" data-view="view-list">Lista <span id="tab-badge" class="badge hidden">0</span></button>
-    <button class="tab" data-view="view-stats">Statistiche</button>
+    <button class="tab" data-view="view-list">Carte <span id="tab-badge" class="badge hidden">0</span></button>
     <button class="tab" data-view="view-life">Gioco</button>
   </nav>
 
-  <script async src="opencv/opencv.js"></script>
+  <!-- OpenCV (~10 MB) viene iniettato solo al primo avvio dello scanner (vedi ensureScanAssets in app.js). -->
   <script src="js/phash.js"></script>
   <script src="js/imagematch.js"></script>
   <script src="js/scryfall.js"></script>
@@ -166,6 +166,7 @@
   <script src="js/moxfield.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/cards.js"></script>
   <script src="js/life.js"></script>
 </body>
 </html>
